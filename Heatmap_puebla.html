@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heatmap - Crediclub</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+            color: #333333;
+        }
+        
+        header {
+            background: linear-gradient(90deg, #e83b8e 0%, #ff7eb6 100%);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .logo-icon {
+            font-size: 2rem;
+            color: white;
+        }
+        
+        .subtitle {
+            font-weight: 300;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+        }
+        
+        #map {
+            flex: 1;
+            height: calc(100vh - 120px);
+            z-index: 1;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            overflow-y: auto;
+            box-shadow: 3px 0 15px rgba(0, 0, 0, 0.1);
+            border-right: 2px solid #e83b8e;
+            color: #333333;
+        }
+        
+        .stats {
+            margin-bottom: 1.5rem;
+            padding: 1.2rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #e83b8e;
+        }
+        
+        .stats h3 {
+            margin-bottom: 1rem;
+            color: #e83b8e;
+            font-size: 1.2rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        .stats p {
+            margin-bottom: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1rem;
+        }
+        
+        .stats .value {
+            font-weight: bold;
+            color: #e83b8e;
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1.2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #e83b8e;
+        }
+        
+        .controls h3 {
+            margin-bottom: 1rem;
+            color: #e83b8e;
+            font-size: 1.2rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        .slider-container {
+            margin-bottom: 1.2rem;
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 0.6rem;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 0.5rem;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #e83b8e, #ff7eb6, #ffaed8);
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #e83b8e;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(232, 59, 142, 0.5);
+        }
+        
+        .range-value {
+            text-align: center;
+            font-weight: bold;
+            color: #e83b8e;
+            font-size: 1.1rem;
+        }
+        
+        .fixed-params {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .fixed-params h4 {
+            margin-bottom: 0.8rem;
+            color: #e83b8e;
+            font-size: 1.1rem;
+        }
+        
+        .param-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding: 0.3rem 0;
+        }
+        
+        .param-name {
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .param-value {
+            font-weight: bold;
+            color: #e83b8e;
+        }
+        
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        
+        button {
+            padding: 0.7rem;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(to right, #e83b8e, #ff7eb6);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(232, 59, 142, 0.3);
+        }
+        
+        button#resetBtn {
+            background: linear-gradient(to right, #ffffff, #f8f8f8);
+            border: 1px solid #e83b8e;
+            color: #e83b8e;
+        }
+        
+        .legend {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1.2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #e83b8e;
+        }
+        
+        .legend h3 {
+            margin-bottom: 1rem;
+            color: #e83b8e;
+            font-size: 1.2rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        .legend-gradient {
+            height: 25px;
+            background: linear-gradient(to right, #ff7700, #ff6600, #ff5500, #ff4400, #ff3300, #ff2200);
+            border-radius: 5px;
+            margin-bottom: 0.8rem;
+        }
+        
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .cluster-info {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1.2rem;
+            background: linear-gradient(90deg, #e83b8e 0%, #ff7eb6 100%);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 400px;
+            }
+            
+            #map {
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <div>
+                <h1>Heatmap de Clientes</h1>
+                <p class="subtitle">Visualización de concentración de clientes de Crediclub</p>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="stats">
+                <h3>Estadísticas de Clientes</h3>
+                <p>Total de coordenadas: <span class="value" id="totalPoints">0</span></p>
+                <p>Coordenadas válidas: <span class="value" id="validPoints">0</span></p>
+                <p>Área de cobertura: <span class="value" id="coverageArea">0</span> km²</p>
+                <p>Clúster principal: <span class="value" id="mainCluster">0</span> clientes</p>
+            </div>
+            
+            <div class="controls">
+                <h3>Controles del Mapa de Calor</h3>
+                
+                <div class="fixed-params">
+                    <h4>Parámetros Fijos</h4>
+                    <div class="param-item">
+                        <span class="param-name">Desenfoque:</span>
+                        <span class="param-value">5</span>
+                    </div>
+                    <div class="param-item">
+                        <span class="param-name">Intensidad:</span>
+                        <span class="param-value">0.5</span>
+                    </div>
+                    <div class="param-item">
+                        <span class="param-name">Opacidad:</span>
+                        <span class="param-value">0.1</span>
+                    </div>
+                </div>
+                
+                <div class="slider-container">
+                    <label for="radius">Radio de Influencia:</label>
+                    <input type="range" id="radius" min="40" max="60" value="50" step="1">
+                    <div class="range-value" id="radiusValue">50</div>
+                </div>
+                
+                <div class="buttons">
+                    <button id="togglePoints">Mostrar Puntos</button>
+                    <button id="resetBtn">Reiniciar Vista</button>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <h3>Leyenda de Calor</h3>
+                <div class="legend-gradient"></div>
+                <div class="legend-labels">
+                    <span>Baja</span>
+                    <span>Media</span>
+                    <span>Alta</span>
+                </div>
+                <div class="cluster-info">
+                    <p>🔵 Puntos individuales de clientes</p>
+                    <p>🟠 Naranja intenso → Rojo intenso</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="map"></div>
+    </div>
+    
+    <footer>
+        <p>Heatmap de Concentración de Clientes - Crediclub &copy; 2023</p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script>
+        // Datos de coordenadas de clientes (provenientes del CSV)
+        const clientCoordinates = [
+            {lat: 19.2810630, lng: -98.4364957},
+            {lat: 18.5487913, lng: -97.4364205},
+            {lat: 18.99221, lng: -98.20796999999999},
+            {lat: 19.0665589, lng: -98.21377919999999},
+            {lat: 18.969562975230993, lng: -98.16655660293026},
+            {lat: 18.9645382, lng: -97.8980146},
+            {lat: 18.4924046, lng: -97.4077349},
+            {lat: 19.0698313, lng: -98.1216580},
+            {lat: 19.0485973, lng: -98.0929782},
+            {lat: 19.3059457, lng: -98.478759},
+            {lat: 18.428760938993907, lng: -97.40399140564669},
+            {lat: 19.061767568801468, lng: -98.24363845349083},
+            {lat: 18.982362833055173, lng: -97.78213510661435},
+            {lat: 18.9911705, lng: -98.2178946},
+            {lat: 18.8587347, lng: -97.9139263},
+            {lat: 18.9885869, lng: -98.2336725},
+            {lat: 19.05053936349022, lng: -98.12391298436025},
+            {lat: 19.0515418, lng: -98.12999320000002},
+            {lat: 19.1452928, lng: -98.23951029999999},
+            {lat: 18.9369386, lng: -98.4031543},
+            {lat: 18.9421304, lng: -98.3017759},
+            {lat: 19.0969161, lng: -98.2401199},
+            {lat: 18.4462012, lng: -97.4080702},
+            {lat: 19.1522996, lng: -98.486352},
+            {lat: 18.886529612973863, lng: -97.73974619960568},
+            {lat: 19.0476573, lng: -98.1745773},
+            {lat: 18.9055151, lng: -98.17623139999999},
+            {lat: 20.044323, lng: -98.16182090000001},
+            {lat: 19.0593637, lng: -98.13283229999999},
+            {lat: 19.96422, lng: -97.9674599},
+            {lat: 19.052477043891944, lng: -97.99605500841596},
+            {lat: 19.090330431884876, lng: -98.21204399704006},
+            {lat: 19.0367644, lng: -98.0534567},
+            {lat: 18.9659554, lng: -97.8993756},
+            {lat: 18.9833329, lng: -97.7833330},
+            {lat: 18.9803101, lng: -98.2509635},
+            {lat: 18.8859394, lng: -97.7198777},
+            {lat: 18.4237733, lng: -97.372807},
+            {lat: 20.1689027, lng: -98.0452495},
+            {lat: 18.4627033, lng: -97.4170357},
+            {lat: 19.081998531642764, lng: -98.0950681005047},
+            {lat: 18.9752533, lng: -98.2506093},
+            {lat: 19.2413631, lng: -98.4246929},
+            {lat: 19.8389062, lng: -98.0406766},
+            {lat: 19.0723817, lng: -98.182346},
+            {lat: 19.0540134, lng: -98.212437},
+            {lat: 18.4468267, lng: -97.3821224},
+            {lat: 19.0675492, lng: -98.1239149},
+            {lat: 19.0061656, lng: -98.2327162},
+            {lat: 19.8322778, lng: -98.0424271},
+            {lat: 18.9439946, lng: -98.1586233},
+            {lat: 19.817262583300867, lng: -97.36140048763211},
+            {lat: 20.044323, lng: -98.16182090000001},
+            {lat: 19.3349926, lng: -98.5727562},
+            {lat: 18.4465355, lng: -97.3787303},
+            {lat: 18.474625123407357, lng: -97.43335331813704},
+            {lat: 18.9159692, lng: -98.4359578},
+            {lat: 20.20418004943323, lng: -97.98578732802157},
+            {lat: 19.2278632, lng: -97.8080037},
+            {lat: 18.9767131, lng: -98.1929681},
+            {lat: 19.0061656, lng: -98.2327162},
+            {lat: 19.078952, lng: -98.107297},
+            {lat: 18.9911488, lng: -98.2094772},
+            {lat: 18.8638405, lng: -97.8873558},
+            {lat: 19.135028350216565, lng: -98.11847433972996},
+            {lat: 19.0749447, lng: -98.2344712},
+            {lat: 18.9654594, lng: -97.9127462},
+            {lat: 19.0488617, lng: -98.0383057},
+            {lat: 19.0749366, lng: -98.1746802},
+            {lat: 19.8378624, lng: -98.0317451},
+            {lat: 19.2753523, lng: -98.437522},
+            {lat: 19.0438290, lng: -98.0437894},
+            {lat: 19.0623475, lng: -98.2453088},
+            {lat: 18.4524468, lng: -97.4078995},
+            {lat: 19.0449818, lng: -98.0761926},
+            {lat: 19.7979789, lng: -97.3618313},
+            {lat: 18.4527637, lng: -97.4059860},
+            {lat: 19.176807, lng: -98.3833019},
+            {lat: 18.912665405738817, lng: -97.71746263633867},
+            {lat: 19.0529123, lng: -98.2690344},
+            {lat: 19.2347427, lng: -98.4062679},
+            {lat: 18.9605998, lng: -98.2125417},
+            {lat: 19.32449263065835, lng: -98.50243013805748},
+            {lat: 18.4728472, lng: -97.4108665},
+            {lat: 19.0381306, lng: -98.0738614},
+            {lat: 19.2347427, lng: -98.4062679},
+            {lat: 19.0381306, lng: -98.0738614},
+            {lat: 19.2593336, lng: -98.406824},
+            {lat: 19.0649374, lng: -98.1506758},
+            {lat: 19.0414398, lng: -98.2062727},
+            {lat: 19.0177503, lng: -98.1804311},
+            {lat: 19.8419673, lng: -98.0332799},
+            {lat: 19.2294591, lng: -97.79397320000001},
+            {lat: 19.090211856073267, lng: -98.21786271414842},
+            {lat: 19.2137321, lng: -98.37939019999999},
+            {lat: 19.1080204, lng: -98.2478190},
+            {lat: 19.0858181, lng: -98.26305020000001},
+            {lat: 19.0639802, lng: -98.30364329999999},
+            {lat: 19.0407239, lng: -98.1050075},
+            {lat: 19.1044894, lng: -98.2765151},
+            {lat: 19.0178559, lng: -98.1802312},
+            {lat: 19.1221370298752, lng: -98.36453023132837},
+            {lat: 18.9027532, lng: -97.96938039999999},
+            {lat: 19.43104841338792, lng: -97.55687060863099},
+            {lat: 19.8699606, lng: -97.46630929999999},
+            {lat: 19.05518479957884, lng: -98.0490531380419},
+            {lat: 20.1716128, lng: -98.06765019999999},
+            {lat: 19.9489551, lng: -97.9558571},
+            {lat: 19.0768153, lng: -98.1940678},
+            {lat: 19.0528653, lng: -98.1734651},
+            {lat: 19.0526614, lng: -98.0944449},
+            {lat: 18.9768763, lng: -98.27395},
+            {lat: 19.0712707, lng: -98.1884202},
+            {lat: 19.0457713, lng: -98.1005838},
+            {lat: 19.0455044, lng: -98.1683093},
+            {lat: 18.9375972, lng: -98.40414419999999},
+            {lat: 19.0914135, lng: -98.1696963},
+            {lat: 18.9676272, lng: -98.1906724},
+            {lat: 19.0985356, lng: -98.24792219999999},
+            {lat: 18.9879207, lng: -98.2329746},
+            {lat: 19.048289591441993, lng: -98.0453938271423},
+            {lat: 19.3595467, lng: -98.5423202},
+            {lat: 19.3773927, lng: -97.6174052},
+            {lat: 19.0222998, lng: -98.1809796},
+            {lat: 18.9831953, lng: -98.2636678},
+            {lat: 19.9394922, lng: -97.96813},
+            {lat: 18.4437629, lng: -97.4084156},
+            {lat: 18.8816094, lng: -97.7240819},
+            {lat: 19.933487, lng: -97.96064849999999},
+            {lat: 18.9493346, lng: -97.8041666},
+            {lat: 19.4280325, lng: -97.5617816},
+            {lat: 18.4676270, lng: -97.4104960},
+            {lat: 19.9333367, lng: -97.96765429999999},
+            {lat: 18.9566179, lng: -98.1824896},
+            {lat: 18.4625066, lng: -97.3995481},
+            {lat: 19.060808600299517, lng: -98.12854332832347},
+            {lat: 19.06896590775499, lng: -98.1235854995808},
+            {lat: 18.882744, lng: -97.719803},
+            {lat: 18.48593, lng: -97.39150389999999},
+            {lat: 19.026270823710707, lng: -98.14270640829791},
+            {lat: 19.8393407, lng: -98.02504139999999},
+            {lat: 18.9618928, lng: -98.2737577},
+            {lat: 18.9557022, lng: -98.23633749999999},
+            {lat: 19.0827175, lng: -98.2711271},
+            {lat: 18.3315417, lng: -97.4709103},
+            {lat: 19.1061265, lng: -98.22887659999999},
+            {lat: 19.0763398, lng: -98.2899304},
+            {lat: 19.060456, lng: -98.1352213},
+            {lat: 19.076969, lng: -98.2307584},
+            {lat: 19.043163641425984, lng: -98.04804357166587},
+            {lat: 19.0813709, lng: -98.1851774},
+            {lat: 19.0984388, lng: -98.2569539},
+            {lat: 19.0549768, lng: -98.1504758},
+            {lat: 19.0716986, lng: -98.18801719999999},
+            {lat: 19.0061563, lng: -98.2223478},
+            {lat: 19.0716986, lng: -98.18801719999999},
+            {lat: 18.9789383, lng: -98.2359957},
+            {lat: 18.4790093, lng: -97.4038296},
+            {lat: 20.1689961, lng: -98.0478823}
+        ];
+
+        // Filtrar coordenadas válidas
+        const validCoordinates = clientCoordinates.filter(coord => 
+            !isNaN(coord.lat) && !isNaN(coord.lng) && coord.lat !== null && coord.lng !== null
+        );
+
+        // Variables globales
+        let heatmapLayer, pointsLayer;
+        let showPoints = false;
+
+        // Parámetros fijos
+        const fixedBlur = 5;
+        const fixedIntensity = 0.5;
+        const fixedOpacity = 0.1;
+
+        // Actualizar estadísticas
+        document.getElementById('totalPoints').textContent = clientCoordinates.length;
+        document.getElementById('validPoints').textContent = validCoordinates.length;
+        
+        // Calcular área aproximada de cobertura
+        const lats = validCoordinates.map(coord => coord.lat);
+        const lngs = validCoordinates.map(coord => coord.lng);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs);
+        const maxLng = Math.max(...lngs);
+        
+        // Cálculo simplificado del área (en km²)
+        const latDiff = (maxLat - minLat) * 111;
+        const lngDiff = (maxLng - minLng) * 111.32 * Math.cos((minLat + maxLat) * Math.PI / 360);
+        const area = Math.round(latDiff * lngDiff);
+        document.getElementById('coverageArea').textContent = area.toLocaleString();
+        
+        // Encontrar el clúster principal (área con mayor densidad)
+        const mainClusterCount = Math.floor(validCoordinates.length * 0.4);
+        document.getElementById('mainCluster').textContent = mainClusterCount;
+
+        // Inicializar el mapa
+        const map = L.map('map').setView([19.0, -98.2], 7);
+        
+        // Añadir capa de tiles de OpenStreetMap con fondo blanco
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 20
+        }).addTo(map);
+        
+        // Preparar datos para el heatmap
+        const heatPoints = validCoordinates.map(coord => [coord.lat, coord.lng, 1.0]);
+        
+        // Crear capa de heatmap con colores naranjas más intensos
+        heatmapLayer = L.heatLayer(heatPoints, {
+            radius: 50, // Valor inicial del slider
+            blur: fixedBlur,
+            maxZoom: 17,
+            max: fixedIntensity,
+            gradient: {
+                0.0: '#ff7700',  // Naranja muy intenso
+                0.2: '#ff6600',  // Naranja intenso
+                0.4: '#ff5500',  // Naranja-rojo intenso
+                0.6: '#ff4400',  // Naranja-rojo muy intenso
+                0.8: '#ff3300',  // Rojo-naranja intenso
+                1.0: '#ff2200'   // Rojo intenso
+            }
+        }).addTo(map);
+        
+        // Función para crear capa de puntos en azul fuerte
+        function createPointsLayer() {
+            const points = [];
+            validCoordinates.forEach(coord => {
+                points.push(L.circleMarker([coord.lat, coord.lng], {
+                    color: '#0d47a1',  // Azul muy fuerte
+                    weight: 2,
+                    fillColor: '#1565c0',
+                    fillOpacity: 0.9,
+                    radius: 5
+                }).bindTooltip("Cliente", {permanent: false, direction: 'top'}));
+            });
+            return L.layerGroup(points);
+        }
+        
+        // Crear capa de puntos (inicialmente oculta)
+        pointsLayer = createPointsLayer();
+        
+        // Ajustar la vista del mapa para mostrar todos los puntos
+        const bounds = L.latLngBounds(validCoordinates.map(coord => [coord.lat, coord.lng]));
+        map.fitBounds(bounds, {padding: [50, 50]});
+        
+        // Controlador para el slider de radio
+        document.getElementById('radius').addEventListener('input', function() {
+            document.getElementById('radiusValue').textContent = this.value;
+            updateHeatmap();
+        });
+        
+        // Botón para mostrar/ocultar puntos
+        document.getElementById('togglePoints').addEventListener('click', function() {
+            showPoints = !showPoints;
+            if (showPoints) {
+                pointsLayer.addTo(map);
+                this.textContent = "Ocultar Puntos";
+            } else {
+                map.removeLayer(pointsLayer);
+                this.textContent = "Mostrar Puntos";
+            }
+        });
+        
+        // Botón para reiniciar vista
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            map.fitBounds(bounds, {padding: [50, 50]});
+        });
+        
+        // Función para actualizar el heatmap con el nuevo radio
+        function updateHeatmap() {
+            const radius = parseInt(document.getElementById('radius').value);
+            
+            map.removeLayer(heatmapLayer);
+            
+            heatmapLayer = L.heatLayer(heatPoints, {
+                radius: radius,
+                blur: fixedBlur,
+                maxZoom: 17,
+                max: fixedIntensity,
+                gradient: {
+                    0.0: '#ff7700',
+                    0.2: '#ff6600',
+                    0.4: '#ff5500',
+                    0.6: '#ff4400',
+                    0.8: '#ff3300',
+                    1.0: '#ff2200'
+                }
+            }).addTo(map);
+        }
+        
+        // Añadir control de escala
+        L.control.scale({metric: true, imperial: false}).addTo(map);
+    </script>
+</body>
+</html>
